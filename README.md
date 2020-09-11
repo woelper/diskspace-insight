@@ -1,6 +1,7 @@
 # diskspace-insight
 Rust library to gather info about what files use up space
 
+![Rust](https://github.com/woelper/diskspace-insight/workflows/Rust/badge.svg)
 
 ```rust
 let i = scan("/home/kaputnik/Downloads");
