@@ -7,9 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egui = { path = "../../egui/egui"}
-# egui = { path = "../../egui/egui", features = ["serde"] }
-egui_glium = { path = "../../egui/egui_glium" }
+#egui = { path = "../../egui/egui"}
+egui = { git = "https://github.com/emilk/egui.git", features = ["serde"] }
+egui_glium = { git = "https://github.com/emilk/egui.git" }
+#egui_glium = { path = "../../egui/egui_glium" }
+
 diskspace_insight = { path = "../" }
 dirs = "*"
 
