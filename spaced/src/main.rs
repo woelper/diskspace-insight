@@ -15,7 +15,17 @@ struct MyApp {
     max_types: i32,
     max_files: i32,
     info: Option<DirInfo>,
-    allow_delete: bool
+    allow_delete: bool,
+    filter_chain: Vec<Filter>
+}
+
+#[derive(Debug)]
+enum Filter {
+    MinAge(i32),
+    MaxAge(i32),
+    MinSize(i32),
+    MaxResults(i32)
+
 }
 
 impl egui::app::App for MyApp {
@@ -27,7 +37,8 @@ impl egui::app::App for MyApp {
             max_types,
             max_files,
             info,
-            allow_delete
+            allow_delete,
+            filter_chain
         } = self;
 
         Window::new("Setup").show(ui.ctx(), |ui| {
@@ -111,10 +122,69 @@ impl egui::app::App for MyApp {
 
         Window::new("Directories").scroll(true).show(ui.ctx(), |ui| {
             ui.label(format!("Files by type, largest first"));
+            if let Some(info) = info {
+            } 
+        });
+
+
+    
+        Window::new("Filter builder").scroll(true).show(ui.ctx(), |ui| {
+            ui.label(format!("Filtered files"));
+
+            if ui.button("Add min size").clicked {
+                filter_chain.push(Filter::MinSize(5));
+            }
+            if ui.button("Add min age").clicked {
+                filter_chain.push(Filter::MinAge(1));
+            }
+            if ui.button("Add max results").clicked {
+                filter_chain.push(Filter::MaxResults(50));
+            }
+            
+            // Edit filters
+            for filter in filter_chain.iter_mut() {
+                match filter {
+                    Filter::MinSize(size) => {
+                        ui.add(Slider::i32(size, 1..=1000).text("don't show files smaller than this"));
+                    },
+                    Filter::MinAge(age) => {
+                        ui.add(Slider::i32(age, 1..=100).text("min age (days)"));
+                    },
+                    Filter::MaxResults(max) => {
+                        ui.add(Slider::i32(max, 1..=100).text("max results"));
+                    },
+                    _ => ()
+                }
+            }
+            
+            
 
             if let Some(info) = info {
-                
-         
+
+                if !filter_chain.is_empty() {
+
+                'filter: for (i, file) in info.files_by_size.iter().enumerate() {
+
+
+                    for filter in filter_chain.iter() {
+                        match filter {
+                            Filter::MinSize(minsize) => {
+                                println!("min{:?} / {:?}", minsize*1024*1024, file.size);
+                                if *minsize*1024*1024 > file.size as i32  {continue 'filter}
+                            },
+                            Filter::MinAge(age) => {},
+                            Filter::MaxResults(max) => if i as i32 >= *max {break 'filter},
+                            _ => ()
+                        }
+                    }
+
+
+                    ui.collapsing(format!("{} ({}MB)", file.path.display(), file.size/1024/1024), |ui|{
+           
+                    });
+                    
+                }
+            }
             } 
         });
     }
@@ -127,9 +197,8 @@ impl egui::app::App for MyApp {
 fn main() {
     // let i = diskspace_insight::scan("/home/woelper/Downloads");
 
-    let title = "My Egui Window";
-    let storage = FileStorage::from_path(".spaced.json".into()); // Where to persist app state
-                                                                             // let app: MyApp = egui::app::get_value(&storage, egui::app::APP_KEY).unwrap_or_default(); // Restore `MyApp` from file, or create new `MyApp`.
+    let title = "Spaced";
+    let storage = FileStorage::from_path(".spaced.json".into());
     let mut app: MyApp = MyApp::default();
     app.my_string = dirs::home_dir().unwrap_or_default().to_string_lossy().to_string();
     app.max_types = 10;
@@ -137,6 +206,4 @@ fn main() {
     egui_glium::run(title, RunMode::Reactive, storage, app);
 }
 
-fn my_save_function() {
-    // dummy
-}
+
