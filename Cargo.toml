@@ -3,7 +3,9 @@ name = "diskspace_insight"
 version = "0.1.1"
 authors = ["Johann Woelper <woelper@gmail.com>"]
 edition = "2018"
-
+license = "MIT"
+description = "Investigate where your diskspace has gone"
+keywords = ["disk", "utility", "diskspace"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
