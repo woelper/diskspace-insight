@@ -5,11 +5,14 @@ use jwalk::WalkDir;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
+
 #[derive(Debug, Clone)]
 pub struct File {
     pub size: u64,
     pub ext: Option<String>,
     pub path: PathBuf,
+    pub modified: SystemTime
 }
 
 #[derive(Debug, Clone, Default)]
@@ -30,7 +33,7 @@ pub struct DirInfo {
 }
 
 impl DirInfo {
-    pub fn new<P: AsRef<Path>>(source: P) -> DirInfo {
+    pub fn new() -> DirInfo {
         DirInfo {
             filetypes: HashMap::new(),
             files: vec![],
@@ -58,7 +61,7 @@ impl DirInfo {
 }
 
 pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
-    let mut dirinfo = DirInfo::new(&source);
+    let mut dirinfo = DirInfo::new();
 
     //   WalkDir::new(&source).par_iter().for_each(|x| {});
     WalkDir::new(&source)
@@ -69,11 +72,13 @@ pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
             if let Some(ext) = x.path().extension() {
                 if let Ok(meta) = x.path().metadata() {
                     let size = meta.len();
+                    let modified = meta.modified();
                     let ext_string = ext.to_string_lossy().to_string().to_lowercase();
                     let file = File {
                         size: size,
                         ext: Some(ext_string.clone()),
                         path: x.path().to_path_buf(),
+                        modified: modified.unwrap_or(SystemTime::UNIX_EPOCH)
                     };
                     let ftype = dirinfo.filetypes.entry(ext_string.clone()).or_insert(
                 FileType {
