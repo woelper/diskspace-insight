@@ -1,11 +1,12 @@
 [package]
 name = "diskspace_insight"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Johann Woelper <woelper@gmail.com>"]
 edition = "2018"
 license = "MIT"
 description = "Investigate where your diskspace has gone"
 keywords = ["disk", "utility", "diskspace"]
+repository = "https://github.com/woelper/diskspace-insight"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
