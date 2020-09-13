@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
+/// A File, representing a file on disk
 pub struct File {
     pub size: u64,
     pub ext: Option<String>,
@@ -26,9 +27,12 @@ pub struct FileType {
 #[derive(Debug)]
 /// DirInfo holds all info about a diretory.
 pub struct DirInfo {
+    /// All file types
     pub filetypes: HashMap<String, FileType>,
     pub files: Vec<File>,
+    /// Files, ordered by size, descending
     pub files_by_size: Vec<File>,
+    /// Filetypes, ordered by size, descending
     pub types_by_size: Vec<FileType>
 }
 
@@ -60,6 +64,7 @@ impl DirInfo {
     }
 }
 
+/// Scan a directory
 pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
 
@@ -68,7 +73,6 @@ pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
         .into_iter()
         .filter_map(|x| x.ok())
         .for_each(|x| {
-            // println!("{:?}", x.path());
             if let Some(ext) = x.path().extension() {
                 if let Ok(meta) = x.path().metadata() {
                     let size = meta.len();
