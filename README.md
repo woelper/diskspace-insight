@@ -1,5 +1,7 @@
 # diskspace-insight
-Rust library to gather info about what files use up space
+Rust library to gather to see what eats up your disk space
+
+See https://github.com/woelper/birdseye for a GUI app using this.
 
 ![Rust](https://github.com/woelper/diskspace-insight/workflows/Rust/badge.svg)
 
