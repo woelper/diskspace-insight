@@ -49,7 +49,7 @@ pub struct FileType {
     pub files: Vec<File>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// DirInfo holds all info about a diretory.
 pub struct DirInfo {
     /// All file types
@@ -61,6 +61,7 @@ pub struct DirInfo {
     pub types_by_size: Vec<FileType>,
     pub dirs_by_size: Vec<Directory>,
     pub tree: HashMap<PathBuf, Directory>,
+    pub combined_size: u64
 }
 
 impl DirInfo {
@@ -72,10 +73,11 @@ impl DirInfo {
             types_by_size: vec![],
             dirs_by_size: vec![],
             tree: HashMap::new(),
+            combined_size: 0
         }
     }
 
-    fn types_by_size(&self) -> Vec<FileType> {
+    pub fn types_by_size(&self) -> Vec<FileType> {
         let mut ftypes: Vec<_> = self
             .filetypes
             .par_iter()
@@ -90,22 +92,25 @@ impl DirInfo {
         ftypes
     }
 
-    fn files_by_size(&self) -> Vec<File> {
+    pub fn files_by_size(&self) -> Vec<File> {
         let mut count = self.files.clone();
         count.par_sort_by(|a, b| b.size.cmp(&a.size));
         count
     }
 
-    fn dirs_by_size(&self) -> Vec<Directory> {
+    pub fn dirs_by_size(&self) -> Vec<Directory> {
         let mut dirs: Vec<Directory> = self.tree.values().cloned().collect();
         dirs.par_sort_by(|a, b| b.size.cmp(&a.size));
         dirs
     }
 }
 
-/// Scan a directory
-pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
+/// Scan a directory, calling callback with DirInfo periodically
+pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, update_rate_ms: u128) -> DirInfo {
+
+// pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
+    let mut updatetimer = std::time::Instant::now();
 
     // let mut treemap = HashMap::new();
 
@@ -118,6 +123,7 @@ pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
                 if let Some(ext) = x.path().extension() {
                     if let Ok(meta) = x.path().metadata() {
                         let size = meta.len();
+                        dirinfo.combined_size += size;
                         let modified = meta.modified();
                         let ext_string = ext.to_string_lossy().to_string().to_lowercase();
                         let file = File {
@@ -175,11 +181,39 @@ pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
             }
 
             // i.filetype_sizes.insert(k, v)
+            // do sth here as callback
+            // too expensive
+            if updatetimer.elapsed().as_millis() > update_rate_ms {
+                // dirinfo.files_by_size = dirinfo.files_by_size();
+                // dirinfo.types_by_size = dirinfo.types_by_size();
+                // dirinfo.dirs_by_size = dirinfo.dirs_by_size();
+                callback(&dirinfo);
+                updatetimer = std::time::Instant::now();
+
+            }
+
         });
 
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
 
+    // go through all dirs and recursively collect all sizes of subdirs
+    for d in &dirinfo.tree {
+
+    }
+
     dirinfo
 }
+
+
+pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
+    scan_callback(source, |f| {}, 100000)
+}
+
+// pub fn scan_callback<P: AsRef<Path>>(source: P, callback: &dyn Fn(&DirInfo)) -> DirInfo {
+//     let mut dirinfo = DirInfo::new();
+//     callback(&dirinfo);
+//     dirinfo
+
+// }
