@@ -152,17 +152,15 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, up
                                     files: vec![],
                                 });
                         //.size += size as u64;
-                        ftype.size += size as u64;
+                        //ftype.size += size as u64;
                         ftype.files.push(file.clone());
                         dirinfo.files.push(file.clone());
                     }
                 }
             }
             
-            
+            // TODO this should not include dirs outside scan root
             if x.path().is_dir() {
-                // is dir
-                //dbg!(&x);
                 if let Some(parent) = x.path().parent() {
                     //dbg!(&parent);
                     let this_dir = Directory::new(x.path().to_path_buf());
@@ -172,8 +170,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, up
                         .entry(parent.to_path_buf())
                         .or_insert(Directory {
                             path: parent.to_path_buf(),
-                            // directories: vec![this_dir],
-                            // files: vec![file.clone()],
                             ..Default::default()
                         });
                     entry.directories.push(this_dir);
