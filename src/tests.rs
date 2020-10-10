@@ -1,4 +1,7 @@
 use super::*;
+use env_logger;
+use log::*;
+use std::process::Command;
 
 #[test]
 fn base_scan() {
@@ -9,10 +12,59 @@ fn base_scan() {
 
 #[test]
 fn tree() {
-    let i = scan(".");
-    
+    std::env::set_var("RUST_LOG", "debug");
+    let _ = env_logger::try_init();
 
-    for d in &i.dirs_by_size[..10] {
-        dbg!(&d.path);
+    Command::new("mkdir")
+        .arg("-p")
+        .arg("treetest/a/b/c")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/file_5m")
+        .arg("bs=5MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/file_10m")
+        .arg("bs=10MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/c/file_15m")
+        .arg("bs=15MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    // truncate -s 5M ostechnix.txt
+
+    let i = scan("treetest");
+
+    info!("=== Files By Size");
+    
+    for d in &i.files_by_size {
+        info!("{:?}", &d.path);
     }
+    
+    info!("=== Dirs By Size");
+
+    for d in &i.dirs_by_size {
+        info!("{:?}", &d.path);
+    }
+
+    info!("=== Dirs By Tree");
+    for d in &i.tree {
+        info!("{}", d.1);
+    }
+
+ 
 }

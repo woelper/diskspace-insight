@@ -2,10 +2,12 @@
 mod tests;
 
 use jwalk::WalkDir;
+use log::*;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+use bytesize::ByteSize;
 
 #[derive(Debug, Clone)]
 /// A File, representing a file on disk
@@ -16,14 +18,27 @@ pub struct File {
     pub modified: SystemTime,
 }
 
+impl std::fmt::Display for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "
+            DIRECTORY
+            Path: {}
+            Size: {}
+            Ext: {:?}
+            Modified: {:?}
+        ", self.path.display(), self.size, self.ext, self.modified.duration_since(std::time::UNIX_EPOCH))
+    }
+}
+
 #[derive(Debug, Clone, Default)]
-/// A File, representing a file on disk
+/// A Directory, representing a directory on disk
 pub struct Directory {
     pub size: u64,
     pub combined_size: u64,
     pub path: PathBuf,
     pub files: Vec<File>,
-    pub directories: Vec<Directory>,
+    pub directories: Vec<PathBuf>,
+    pub parent: Option<PathBuf>,
 }
 
 impl Directory {
@@ -36,9 +51,21 @@ impl Directory {
 }
 
 impl Iterator for Directory {
-    type Item = Directory;
-    fn next(&mut self) -> Option<Directory> {
+    type Item = PathBuf;
+    fn next(&mut self) -> Option<PathBuf> {
         self.directories.pop()
+    }
+}
+
+impl std::fmt::Display for Directory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "
+            DIRECTORY
+            Path: {}
+            Size: {}
+            Combined Size: {}
+            Files: {:#?}
+        ", self.path.display(), ByteSize(self.size), ByteSize(self.combined_size), self.files)
     }
 }
 
@@ -61,7 +88,7 @@ pub struct DirInfo {
     pub types_by_size: Vec<FileType>,
     pub dirs_by_size: Vec<Directory>,
     pub tree: HashMap<PathBuf, Directory>,
-    pub combined_size: u64
+    pub combined_size: u64,
 }
 
 impl DirInfo {
@@ -73,7 +100,7 @@ impl DirInfo {
             types_by_size: vec![],
             dirs_by_size: vec![],
             tree: HashMap::new(),
-            combined_size: 0
+            combined_size: 0,
         }
     }
 
@@ -106,9 +133,12 @@ impl DirInfo {
 }
 
 /// Scan a directory, calling callback with DirInfo periodically
-pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, update_rate_ms: u128) -> DirInfo {
-
-// pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
+pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
+    source: P,
+    callback: F,
+    update_rate_ms: u128,
+) -> DirInfo {
+    // pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
     let mut updatetimer = std::time::Instant::now();
 
@@ -120,50 +150,52 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, up
         .filter_map(|x| x.ok())
         .for_each(|x| {
             if x.path().is_file() {
-                if let Some(ext) = x.path().extension() {
-                    if let Ok(meta) = x.path().metadata() {
-                        let size = meta.len();
-                        dirinfo.combined_size += size;
-                        let modified = meta.modified();
-                        let ext_string = ext.to_string_lossy().to_string().to_lowercase();
-                        let file = File {
+                let ext_string: Option<String> = x
+                    .path()
+                    .extension()
+                    .map(|x| x.to_string_lossy().to_string().to_lowercase());
+                
+                // Make sure metadata is available for the file
+                if let Ok(meta) = x.path().metadata() {
+                    let size = meta.len();
+                    dirinfo.combined_size += size;
+                    let file = File {
+                        size: size,
+                        ext: ext_string.clone(),
+                        path: x.path().to_path_buf(),
+                        modified: meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                    };
+                    // Since we are at a file level, the parent is the enclosing folder
+                    if let Some(containing_dir) = x.path().parent() {
+                        // let p = parent.to_path_buf();
+                        let tree_dir = dirinfo.tree.entry(containing_dir.to_path_buf()).or_insert(Directory {
+                            path: containing_dir.to_path_buf(),
+                            parent: containing_dir.parent().map(|x| x.to_path_buf()),
+                            ..Default::default()
+                        });
+                        tree_dir.files.push(file.clone());
+                        tree_dir.size += size;
+                        tree_dir.combined_size += size;
+                        debug!("{}: Added {} to {}", x.path().display(), size, containing_dir.display())
+                    }
+                    if let Some(ext) = ext_string {
+                        let ftype = dirinfo.filetypes.entry(ext.clone()).or_insert(FileType {
+                            ext: ext,
                             size: size,
-                            ext: Some(ext_string.clone()),
-                            path: x.path().to_path_buf(),
-                            modified: modified.unwrap_or(SystemTime::UNIX_EPOCH),
-                        };
-                        if let Some(parent) = x.path().parent() {
-                            let p = parent.to_path_buf();
-                            let d = dirinfo.tree.entry(p.clone()).or_insert(Directory {
-                                path: p,
-                                // files: vec![file.clone()],
-                                ..Default::default()
-                            });
-                            d.files.push(file.clone());
-                            d.size += size;
-                        }
-                        let ftype =
-                            dirinfo
-                                .filetypes
-                                .entry(ext_string.clone())
-                                .or_insert(FileType {
-                                    ext: ext_string.clone(),
-                                    size: size,
-                                    files: vec![],
-                                });
+                            files: vec![],
+                        });
                         //.size += size as u64;
                         //ftype.size += size as u64;
                         ftype.files.push(file.clone());
-                        dirinfo.files.push(file.clone());
                     }
+                    dirinfo.files.push(file.clone());
                 }
             }
-            
+
             // TODO this should not include dirs outside scan root
             if x.path().is_dir() {
                 if let Some(parent) = x.path().parent() {
-                    //dbg!(&parent);
-                    let this_dir = Directory::new(x.path().to_path_buf());
+                    debug!("{:?} parent: {:?}", x.path(), &parent);
 
                     let entry = dirinfo
                         .tree
@@ -172,7 +204,8 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, up
                             path: parent.to_path_buf(),
                             ..Default::default()
                         });
-                    entry.directories.push(this_dir);
+
+                    entry.directories.push(x.path().to_path_buf());
                 }
             }
 
@@ -185,26 +218,64 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(source: P, callback: F, up
                 // dirinfo.dirs_by_size = dirinfo.dirs_by_size();
                 callback(&dirinfo);
                 updatetimer = std::time::Instant::now();
-
             }
-
         });
 
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
 
-    // go through all dirs and recursively collect all sizes of subdirs
-    for d in &dirinfo.tree {
+    for x in &dirinfo.tree {
+        debug!("{:#?}", x.1);
 
     }
+
+    // go through all dirs and recursively collect all sizes of subdirs
+    debug!("=== Adding up subfolders:");
+    for (path, dir) in &dirinfo.tree.clone() {
+        
+        // this is a 'tail' directory, it does not have any more subdirs
+        if dir.directories.is_empty() {
+
+            for a in path.ancestors() {
+                let this_dir = dirinfo.tree.get(a).unwrap();
+                if let Some(p) = a.parent() {
+                    // let parent_dir = dirinfo.tree.get(p).unwrap();
+                    // debug!("adding {:?}={} to {:?}={}", a, ByteSize(this_dir.combined_size), p, ByteSize(parent_dir.combined_size));
+                    dirinfo.tree.get_mut(p).unwrap().combined_size += this_dir.combined_size;
+                }
+
+            }
+
+
+            // now traverse up and add size to parents
+            // let mut parent_dir = d.1.parent.clone();
+            // loop {
+            //     match parent_dir {
+            //         Some(pd) => {
+            //             // TODO: Check if we're at boundary of source folder
+            //             parent_dir = pd.parent().map(|d| d.to_path_buf());
+            //             let this_dir = dirinfo.tree.get(&pd).unwrap();
+            //             debug!("Adding {} to {}", this_dir.size, pd.display());
+            //             dirinfo
+            //                 .tree
+            //                 .entry(pd.clone())
+            //                 .or_insert(Directory::new(pd))
+            //                 .combined_size += this_dir.size;
+            //         }
+            //         None => break,
+            //     }
+            // }
+        }
+    }
+
+    debug!("=== Iter:");
 
     dirinfo
 }
 
-
 pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
-    scan_callback(source, |f| {}, 100000)
+    scan_callback(source, |_| {}, 100000)
 }
 
 // pub fn scan_callback<P: AsRef<Path>>(source: P, callback: &dyn Fn(&DirInfo)) -> DirInfo {
