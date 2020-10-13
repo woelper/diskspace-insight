@@ -63,13 +63,18 @@ impl Directory {
             combined_size: self.size,
             path: PathBuf::from("Files"),
             directories: vec![],
-            parent: self.parent.clone()
+            parent: self.parent.clone(),
         }
-
     }
 
     pub fn sorted_subdirs(&self, info: &DirInfo) -> Vec<Directory> {
-        let mut sorted_dirs: Vec<Directory> = self.directories.iter().map(|d| info.tree.get(d)).flatten().cloned().collect();
+        let mut sorted_dirs: Vec<Directory> = self
+            .directories
+            .iter()
+            .map(|d| info.tree.get(d))
+            .flatten()
+            .cloned()
+            .collect();
         sorted_dirs.sort_by(|a, b| b.combined_size.cmp(&a.combined_size));
         sorted_dirs
     }
@@ -174,9 +179,7 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     let mut dirinfo = DirInfo::new();
     let mut updatetimer = std::time::Instant::now();
 
-    WalkDir::new(&source)
-    .into_iter()
-    .for_each(|x| {
+    WalkDir::new(&source).into_iter().for_each(|x| {
         debug!("{:?}", x);
     });
 
@@ -187,9 +190,7 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
         // .filter_map(|x| x.ok())
         .for_each(|x| {
             debug!("{:?}", &x);
-            if x.path().starts_with(".") {
-
-            }
+            if x.path().starts_with(".") {}
             if x.path().is_file() {
                 let ext_string: Option<String> = x
                     .path()
@@ -230,8 +231,8 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                                     path: a.to_path_buf(),
                                     parent: a.parent().map(|x| x.to_path_buf()),
                                     ..Default::default()
-                                }).combined_size += size;
-
+                                })
+                                .combined_size += size;
                         }
                         // tree_dir.combined_size += size;
                         // debug!(
@@ -287,9 +288,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
-
-
-
 
     dirinfo
 }

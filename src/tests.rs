@@ -85,12 +85,11 @@ fn tree() {
     }
 
     Command::new("rm")
-    .arg("-rf")
-    .arg("treetest")
-    .output()
-    .unwrap();
+        .arg("-rf")
+        .arg("treetest")
+        .output()
+        .unwrap();
 }
-
 
 #[test]
 fn walk() {
@@ -103,7 +102,6 @@ fn walk() {
         .output()
         .unwrap();
 
-
     Command::new("dd")
         .arg("if=/dev/urandom")
         .arg("of=test/a/file_20m.20")
@@ -112,14 +110,18 @@ fn walk() {
         .output()
         .unwrap();
 
-        for entry in WalkDir::new("test").into_iter().filter_map(|e| e.ok()) {
-            info!("{}", entry.path().display());
-        }
+    let ls = Command::new("ls").arg("-lRa").arg("test").output().unwrap().stdout;
+    // let ls = Command::new("tree").arg("-a").arg("test").output().unwrap().stdout;
+    for line in std::str::from_utf8(&ls).unwrap().split("\n") {
 
-        Command::new("rm")
-        .arg("-rf")
-        .arg("test")
-        .output()
-        .unwrap();
- 
+        info!("{:?}", line);
+    }
+
+    for entry in WalkDir::new("test").into_iter()
+    // .filter_map(|e| e.ok())
+    {
+        info!("{:?}", entry);
+    }
+
+    Command::new("rm").arg("-rf").arg("test").output().unwrap();
 }
