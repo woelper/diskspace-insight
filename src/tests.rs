@@ -110,6 +110,14 @@ fn walk() {
         .output()
         .unwrap();
 
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=test/a/.b/file_20m.20")
+        .arg("bs=20MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
     let ls = Command::new("ls").arg("-lRa").arg("test").output().unwrap().stdout;
     // let ls = Command::new("tree").arg("-a").arg("test").output().unwrap().stdout;
     for line in std::str::from_utf8(&ls).unwrap().split("\n") {

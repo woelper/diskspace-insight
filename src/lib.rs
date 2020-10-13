@@ -2,7 +2,7 @@
 mod tests;
 
 use bytesize::ByteSize;
-use jwalk::WalkDir;
+use jwalk::{WalkDir, WalkDirGeneric};
 use log::*;
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -179,15 +179,15 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     let mut dirinfo = DirInfo::new();
     let mut updatetimer = std::time::Instant::now();
 
-    WalkDir::new(&source).into_iter().for_each(|x| {
-        debug!("{:?}", x);
-    });
+
+    // WalkDirGeneric::new(&source).skip_hidden(false)
+
 
     //   WalkDir::new(&source).par_iter().for_each(|x| {});
     WalkDir::new(&source)
+        .skip_hidden(false)
         .into_iter()
         .flatten()
-        // .filter_map(|x| x.ok())
         .for_each(|x| {
             debug!("{:?}", &x);
             if x.path().starts_with(".") {}
