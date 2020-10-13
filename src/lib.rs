@@ -49,7 +49,7 @@ pub struct Directory {
 }
 
 impl Directory {
-    fn new(path: PathBuf) -> Directory {
+    pub fn new(path: PathBuf) -> Directory {
         Directory {
             path,
             ..Default::default()
@@ -174,11 +174,22 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     let mut dirinfo = DirInfo::new();
     let mut updatetimer = std::time::Instant::now();
 
+    WalkDir::new(&source)
+    .into_iter()
+    .for_each(|x| {
+        debug!("{:?}", x);
+    });
+
     //   WalkDir::new(&source).par_iter().for_each(|x| {});
     WalkDir::new(&source)
         .into_iter()
-        .filter_map(|x| x.ok())
+        .flatten()
+        // .filter_map(|x| x.ok())
         .for_each(|x| {
+            debug!("{:?}", &x);
+            if x.path().starts_with(".") {
+
+            }
             if x.path().is_file() {
                 let ext_string: Option<String> = x
                     .path()
@@ -210,7 +221,7 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                         tree_dir.files.push(file.clone());
                         tree_dir.size += size;
                         for a in containing_dir.ancestors() {
-                            debug!("Adding {:?} to {}", x.path().display(), a.display());
+                            // debug!("Adding {:?} to {}", x.path().display(), a.display());
 
                             dirinfo
                                 .tree
@@ -277,74 +288,8 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
 
-    for x in &dirinfo.tree {
-        debug!("{:#?}", x.1);
-    }
 
 
-
-    // // go through all dirs and recursively collect all sizes of subdirs
-    // debug!("=== Adding up subfolders:");
-    // for (path, dir) in &dirinfo.tree.clone() {
-    //     // this is a 'tail' directory, it does not have any more subdirs
-    //     if dir.directories.is_empty() {
-    //         debug!(">>> Is a tail: {}", path.display());
-
-    //         // for a in path.ancestors() {
-
-    //         //     // Check if we cross the source boundary
-    //         //     if a == source.as_ref() {
-    //         //         break;
-    //         //     }
-
-    //         //     let this_dir = dirinfo.tree.get(a).unwrap().clone();
-    //         //     if let Some(p) = a.parent() {
-    //         //         debug!("adding {:?}={} to {:?}={}", a, ByteSize(this_dir.size), p, ByteSize(dirinfo.tree.get(p).unwrap().combined_size));
-    //         //         match dirinfo.tree.get_mut(p) {
-    //         //             Some(p) => {
-    //         //                 p.combined_size += this_dir.size;
-    //         //             },
-    //         //             None => {
-    //         //                 error!("Can't get {} from tree", p.display())
-    //         //             }
-    //         //         }
-    //         //         //dirinfo.tree.get_mut(p).unwrap().combined_size += this_dir.combined_size;
-    //         //     }
-
-    //         // }
-
-    //         for a in path.ancestors() {
-    //             // Check if we cross the source boundary
-    //             if a == source.as_ref() {
-    //                 break;
-    //             }
-
-    //             let mut size = 0;
-    //             match dirinfo.tree.get_mut(a) {
-    //                 Some(p) => {
-    //                         size = p.size;
-    //                     }
-    //                     None => error!("Can't get {} from tree", a.display()),
-    //                 }
-                    
-    //             info!("\tAt {}, {}",  a.display(), size);
-    //             for a2 in a.ancestors() {
-
-    //                 match dirinfo.tree.get_mut(a2) {
-    //                     Some(p) => {
-    //                         info!("\tAdding {} to {}", size, a2.display());
-    //                         p.combined_size += size;
-    //                     }
-    //                     None => error!("Can't get {} from tree", a.display()),
-    //                 }
-
-    //             }
-                
-    //         }
-
-        
-    //     }
-    // }
 
     dirinfo
 }

@@ -22,6 +22,11 @@ fn tree() {
         .unwrap();
     Command::new("mkdir")
         .arg("-p")
+        .arg("treetest/a/.conf/c")
+        .output()
+        .unwrap();
+    Command::new("mkdir")
+        .arg("-p")
         .arg("treetest/a/b/d")
         .output()
         .unwrap();
@@ -78,4 +83,43 @@ fn tree() {
     for (p, d) in &i.tree {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
+
+    Command::new("rm")
+    .arg("-rf")
+    .arg("treetest")
+    .output()
+    .unwrap();
+}
+
+
+#[test]
+fn walk() {
+    std::env::set_var("RUST_LOG", "debug");
+    let _ = env_logger::try_init();
+
+    Command::new("mkdir")
+        .arg("-p")
+        .arg("test/a/.b/c")
+        .output()
+        .unwrap();
+
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=test/a/file_20m.20")
+        .arg("bs=20MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+        for entry in WalkDir::new("test").into_iter().filter_map(|e| e.ok()) {
+            info!("{}", entry.path().display());
+        }
+
+        Command::new("rm")
+        .arg("-rf")
+        .arg("test")
+        .output()
+        .unwrap();
+ 
 }
