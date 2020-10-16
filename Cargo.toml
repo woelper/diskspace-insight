@@ -27,9 +27,9 @@ harness = false
 # harness = false
 
 [dev-dependencies]
-criterion = "*"
-unzip = "*"
+criterion = "0.3.3"
+unzip = "0.1.0"
 reqwest = { version = "0.10.8", features = ["blocking"] }
 # benchmark_sampledata = {path = "../benchmark_sampledata"}
 benchmark_sampledata = "*"
-dirs = "*"
+dirs = "3.0.1"
