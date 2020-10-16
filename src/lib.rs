@@ -247,8 +247,11 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                         for a in containing_dir.ancestors() {
                             // debug!("Adding {:?} to {}", x.path().display(), a.display());
 
-                            if a == source.as_ref() {
-                                break;
+                            if let Some(p) = source.as_ref().parent() {
+                                if a == p {
+                                    break;
+                                }
+
                             }
                             dirinfo
                                 .tree
