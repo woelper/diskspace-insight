@@ -1,9 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Benchmark};
-use diskspace_insight::scan;
+use criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion};
 use dirs;
-
-
-
+use diskspace_insight::scan;
 
 fn scan_home(c: &mut Criterion) {
     std::env::set_var("RUST_LOG", "INFO");
@@ -18,10 +15,7 @@ fn scan_home(c: &mut Criterion) {
             scan(&home)
         });
     });
-
-
 }
-
 
 criterion_group! {
     name = benches;

@@ -118,10 +118,14 @@ fn walk() {
         .output()
         .unwrap();
 
-    let ls = Command::new("ls").arg("-lRa").arg("test").output().unwrap().stdout;
+    let ls = Command::new("ls")
+        .arg("-lRa")
+        .arg("test")
+        .output()
+        .unwrap()
+        .stdout;
     // let ls = Command::new("tree").arg("-a").arg("test").output().unwrap().stdout;
     for line in std::str::from_utf8(&ls).unwrap().split("\n") {
-
         info!("{:?}", line);
     }
 
@@ -133,5 +137,3 @@ fn walk() {
 
     Command::new("rm").arg("-rf").arg("test").output().unwrap();
 }
-
-

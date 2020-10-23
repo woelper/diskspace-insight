@@ -1,11 +1,9 @@
+use benchmark_sampledata;
 use criterion::*;
+use diskspace_insight::scan;
 use env_logger;
 use log::*;
 use std::fs::File;
-use diskspace_insight::scan;
-use benchmark_sampledata;
-
-
 
 fn test_scan(c: &mut Criterion) {
     std::env::set_var("RUST_LOG", "INFO");
@@ -24,7 +22,6 @@ fn test_scan(c: &mut Criterion) {
 
     sd.remove();
 }
-
 
 criterion_group! {
     name = benches;

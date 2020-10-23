@@ -69,6 +69,7 @@ impl Directory {
         }
     }
 
+    /// Return a list of directories b size
     pub fn sorted_subdirs(&self, info: &DirInfo) -> Vec<Directory> {
         let mut sorted_dirs: Vec<Directory> = self
             .directories
@@ -79,6 +80,13 @@ impl Directory {
             .collect();
         sorted_dirs.sort_by(|a, b| b.combined_size.cmp(&a.combined_size));
         sorted_dirs
+    }
+
+    /// Return a list of files b size
+    pub fn sorted_files(&self) -> Vec<File> {
+        let mut sorted_files = self.files.clone();
+        sorted_files.sort_by(|a, b| b.size.cmp(&a.size));
+        sorted_files
     }
 }
 
@@ -116,7 +124,7 @@ pub struct FileType {
 }
 
 #[derive(Debug, Clone)]
-/// DirInfo holds all info about a diretory.
+/// A DirInfo holds all info about a directory.
 pub struct DirInfo {
     /// All file types
     pub filetypes: HashMap<String, FileType>,
@@ -131,6 +139,7 @@ pub struct DirInfo {
 }
 
 impl DirInfo {
+    /// Contsruct a new DirInfo
     pub fn new() -> DirInfo {
         DirInfo {
             filetypes: HashMap::new(),
@@ -143,6 +152,7 @@ impl DirInfo {
         }
     }
 
+    /// Return file types, ordered by size
     pub fn types_by_size(&self) -> Vec<FileType> {
         let mut ftypes: Vec<_> = self
             .filetypes
@@ -158,12 +168,14 @@ impl DirInfo {
         ftypes
     }
 
+    /// Return all files, ordered by size
     pub fn files_by_size(&self) -> Vec<File> {
         let mut count = self.files.clone();
         count.par_sort_by(|a, b| b.size.cmp(&a.size));
         count
     }
 
+    /// Return all directories, ordered by size
     pub fn dirs_by_size(&self) -> Vec<Directory> {
         let mut dirs: Vec<Directory> = self.tree.values().cloned().collect();
         dirs.par_sort_by(|a, b| b.size.cmp(&a.size));
@@ -181,18 +193,11 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     let mut dirinfo = DirInfo::new();
     let mut updatetimer = std::time::Instant::now();
 
-
-    
-
-    
-
     WalkDir::new(&source)
         // .skip_hidden(false)
         .into_iter()
         .flatten()
         .for_each(|x| {
-            
-            
             // TODO this should not include dirs outside scan root
             // TODO: if/else to avoid both is_dir and is_file
             if x.path().is_dir() {
@@ -210,7 +215,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                     entry.directories.push(x.path().to_path_buf());
                 }
             }
-            
             // if x.path().is_file() {
             // Assume it's a file
             else {
@@ -243,7 +247,7 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                                 });
                         tree_dir.files.push(file.clone());
                         tree_dir.size += size;
-                        
+
                         for a in containing_dir.ancestors() {
                             // debug!("Adding {:?} to {}", x.path().display(), a.display());
 
@@ -251,7 +255,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                                 if a == p {
                                     break;
                                 }
-
                             }
                             dirinfo
                                 .tree
@@ -263,7 +266,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                                 })
                                 .combined_size += size;
                         }
-
                     }
                     if let Some(ext) = ext_string {
                         let ftype = dirinfo.filetypes.entry(ext.clone()).or_insert(FileType {
@@ -276,8 +278,6 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                     dirinfo.files.push(file.clone());
                 }
             }
-
-
 
             // do sth here as callback
             if updatetimer.elapsed().as_millis() > update_rate_ms {
@@ -293,9 +293,9 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     dirinfo
 }
 
+/// Scan a root path and produce a DirInfo
 pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
-    scan_callback(source, |_| {},
-        std::u128::MAX)
+    scan_callback(source, |_| {}, std::u128::MAX)
 }
 
 // pub fn scan_callback<P: AsRef<Path>>(source: P, callback: &dyn Fn(&DirInfo)) -> DirInfo {
