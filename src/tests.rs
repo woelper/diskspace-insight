@@ -142,6 +142,62 @@ fn walk() {
 fn zip() {
     std::env::set_var("RUST_LOG", "debug");
     let _ = env_logger::try_init();
+
+    Command::new("mkdir")
+        .arg("-p")
+        .arg("treetest/a/b/c")
+        .output()
+        .unwrap();
+    Command::new("mkdir")
+        .arg("-p")
+        .arg("treetest/a/.conf/c")
+        .output()
+        .unwrap();
+    Command::new("mkdir")
+        .arg("-p")
+        .arg("treetest/a/b/d")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/file_5m.5")
+        .arg("bs=5MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/file_10m.10")
+        .arg("bs=10MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/c/file_15m.15")
+        .arg("bs=15MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/d/file_20m.20")
+        .arg("bs=20MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("zip")
+        .arg("-r")
+        .arg("archive.zip")
+        .arg("treetest")
+        .output()
+        .unwrap();
+
     let i = scan_archive("archive.zip");
     info!("=== Files By Size");
 
@@ -159,4 +215,8 @@ fn zip() {
     for (p, d) in &i.tree {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
+
+    Command::new("rm").arg("-rf").arg("treetest").output().unwrap();
+    Command::new("rm").arg("-rf").arg("archive.zip").output().unwrap();
+
 }

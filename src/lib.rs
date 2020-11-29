@@ -371,7 +371,6 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
             }
             dirinfo.files.push(file.clone());
         }
-
     }
 
     dirinfo.files_by_size = dirinfo.files_by_size();
