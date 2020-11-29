@@ -10,6 +10,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 // use std::thread;
+use log::*;
+use std::fs;
+use zip;
 
 #[derive(Debug, Clone)]
 /// A File, representing a file on disk
@@ -296,6 +299,86 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
 /// Scan a root path and produce a DirInfo
 pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
     scan_callback(source, |_| {}, std::u128::MAX)
+}
+
+pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
+    let mut dirinfo = DirInfo::new();
+
+    let file = fs::File::open(&source.as_ref()).unwrap();
+
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+
+    for i in 0..archive.len() {
+        let zip_entry = archive.by_index(i).unwrap();
+
+        if zip_entry.is_dir() {
+        } else {
+            // it's a dir
+            let ext_string = Path::new(zip_entry.name())
+                .extension()
+                .map(|x| x.to_string_lossy().to_string().to_lowercase());
+
+            let size = zip_entry.compressed_size();
+
+            dirinfo.combined_size += size;
+            let file = File {
+                size,
+                ext: ext_string.clone(),
+                path: Path::new(zip_entry.name()).to_path_buf(),
+                modified: SystemTime::now(),
+            };
+
+            if let Some(containing_dir) = Path::new(zip_entry.name()).parent() {
+                let tree_dir =
+                    dirinfo
+                        .tree
+                        .entry(containing_dir.to_path_buf())
+                        .or_insert(Directory {
+                            path: containing_dir.to_path_buf(),
+                            parent: containing_dir.parent().map(|x| x.to_path_buf()),
+                            ..Default::default()
+                        });
+                tree_dir.files.push(file.clone());
+                tree_dir.size += size;
+
+                for a in containing_dir.ancestors() {
+                    // debug!("Adding {:?} to {}", x.path().display(), a.display());
+
+                    if let Some(p) = source.as_ref().parent() {
+                        if a == p {
+                            break;
+                        }
+                    }
+                    dirinfo
+                        .tree
+                        .entry(a.to_path_buf())
+                        .or_insert(Directory {
+                            path: a.to_path_buf(),
+                            parent: a.parent().map(|x| x.to_path_buf()),
+                            ..Default::default()
+                        })
+                        .combined_size += size;
+                }
+            }
+
+            if let Some(ext) = ext_string {
+                let ftype = dirinfo.filetypes.entry(ext.clone()).or_insert(FileType {
+                    ext,
+                    size,
+                    files: vec![],
+                });
+                ftype.files.push(file.clone());
+            }
+            dirinfo.files.push(file.clone());
+        }
+
+    }
+
+    dirinfo.files_by_size = dirinfo.files_by_size();
+    dirinfo.types_by_size = dirinfo.types_by_size();
+    dirinfo.dirs_by_size = dirinfo.dirs_by_size();
+
+    dirinfo
 }
 
 // pub fn scan_callback<P: AsRef<Path>>(source: P, callback: &dyn Fn(&DirInfo)) -> DirInfo {

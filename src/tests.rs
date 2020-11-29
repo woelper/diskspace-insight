@@ -137,3 +137,26 @@ fn walk() {
 
     Command::new("rm").arg("-rf").arg("test").output().unwrap();
 }
+
+#[test]
+fn zip() {
+    std::env::set_var("RUST_LOG", "debug");
+    let _ = env_logger::try_init();
+    let i = scan_archive("archive.zip");
+    info!("=== Files By Size");
+
+    for d in &i.files_by_size {
+        info!("{:?}", &d.path);
+    }
+
+    info!("=== Dirs By Size");
+
+    for d in &i.dirs_by_size {
+        info!("{:?}: {}", d.path, ByteSize(d.size));
+    }
+
+    info!("=== Dirs By Combined Size");
+    for (p, d) in &i.tree {
+        info!("{} {}", p.display(), ByteSize(d.combined_size));
+    }
+}
