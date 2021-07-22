@@ -216,7 +216,14 @@ fn zip() {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
 
-    Command::new("rm").arg("-rf").arg("treetest").output().unwrap();
-    Command::new("rm").arg("-rf").arg("archive.zip").output().unwrap();
-
+    Command::new("rm")
+        .arg("-rf")
+        .arg("treetest")
+        .output()
+        .unwrap();
+    Command::new("rm")
+        .arg("-rf")
+        .arg("archive.zip")
+        .output()
+        .unwrap();
 }

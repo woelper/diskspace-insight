@@ -160,7 +160,7 @@ impl DirInfo {
         let mut ftypes: Vec<_> = self
             .filetypes
             .par_iter()
-            .map(|f| f.1)
+            .map(|(_ext, filetype)| filetype)
             .map(|f| {
                 let mut f = f.clone();
                 f.files.par_sort_by(|a, b| b.size.cmp(&a.size));
@@ -273,10 +273,11 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                     if let Some(ext) = ext_string {
                         let ftype = dirinfo.filetypes.entry(ext.clone()).or_insert(FileType {
                             ext,
-                            size,
+                            size: 0,
                             files: vec![],
                         });
                         ftype.files.push(file.clone());
+                        ftype.size += file.size;
                     }
                     dirinfo.files.push(file.clone());
                 }
@@ -304,9 +305,9 @@ pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
 pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
 
-    let file = fs::File::open(&source.as_ref()).unwrap();
+    let zipfile = fs::File::open(&source.as_ref()).unwrap();
 
-    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut archive = zip::ZipArchive::new(zipfile).unwrap();
 
     for i in 0..archive.len() {
         let zip_entry = archive.by_index(i).unwrap();
@@ -364,10 +365,11 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
             if let Some(ext) = ext_string {
                 let ftype = dirinfo.filetypes.entry(ext.clone()).or_insert(FileType {
                     ext,
-                    size,
+                    size: 0,
                     files: vec![],
                 });
                 ftype.files.push(file.clone());
+                ftype.size += file.size;
             }
             dirinfo.files.push(file.clone());
         }
