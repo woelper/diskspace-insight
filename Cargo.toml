@@ -1,22 +1,21 @@
 [package]
 name = "diskspace_insight"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Johann Woelper <woelper@gmail.com>"]
 edition = "2018"
 license = "MIT"
 description = "Investigate where your diskspace has gone"
 keywords = ["disk", "utility", "diskspace"]
 repository = "https://github.com/woelper/diskspace-insight"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 # jwalk = "0.5.1"
-walkdir = "2.3.1"
+walkdir = "2.3.2"
 rayon = "1.5.1"
-log = "0.4.11"
+log = "0.4.14"
 env_logger = "0.9.0"
-bytesize = "1.0.1"
-zip = "0.5.8"
+bytesize = "1.1.0"
+zip = "0.5.13"
 
 
 [[bench]]

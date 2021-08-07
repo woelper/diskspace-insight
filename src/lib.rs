@@ -126,7 +126,7 @@ pub struct FileType {
     pub files: Vec<File>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 /// A DirInfo holds all info about a directory.
 pub struct DirInfo {
     /// All file types
@@ -136,23 +136,17 @@ pub struct DirInfo {
     pub files_by_size: Vec<File>,
     /// Filetypes, ordered by size, descending
     pub types_by_size: Vec<FileType>,
+    /// Directories, ordered by size
     pub dirs_by_size: Vec<Directory>,
     pub tree: HashMap<PathBuf, Directory>,
+    /// Cumulated size
     pub combined_size: u64,
 }
 
 impl DirInfo {
-    /// Contsruct a new DirInfo
+    /// Construct a new DirInfo
     pub fn new() -> DirInfo {
-        DirInfo {
-            filetypes: HashMap::new(),
-            files: vec![],
-            files_by_size: vec![],
-            types_by_size: vec![],
-            dirs_by_size: vec![],
-            tree: HashMap::new(),
-            combined_size: 0,
-        }
+        DirInfo::default()
     }
 
     /// Return file types, ordered by size
