@@ -72,7 +72,7 @@ impl Directory {
         }
     }
 
-    /// Return a list of directories b size
+    /// Return a list of directories by size
     pub fn sorted_subdirs(&self, info: &DirInfo) -> Vec<Directory> {
         let mut sorted_dirs: Vec<Directory> = self
             .directories
@@ -85,7 +85,7 @@ impl Directory {
         sorted_dirs
     }
 
-    /// Return a list of files b size
+    /// Return a list of files by size
     pub fn sorted_files(&self) -> Vec<File> {
         let mut sorted_files = self.files.clone();
         sorted_files.sort_by(|a, b| b.size.cmp(&a.size));
@@ -120,9 +120,13 @@ impl std::fmt::Display for Directory {
 }
 
 #[derive(Debug, Clone, Default)]
+/// A type of files, such as all txt files.
 pub struct FileType {
+    /// Combined size of this FileType
     pub size: u64,
+    /// The extension of this FileType, such as `txt`
     pub ext: String,
+    /// The files belonging to this type
     pub files: Vec<File>,
 }
 
