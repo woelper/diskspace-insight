@@ -145,6 +145,8 @@ pub struct DirInfo {
     pub tree: HashMap<PathBuf, Directory>,
     /// Cumulated size
     pub combined_size: u64,
+    /// All duplicates
+    pub duplicates: HashMap<u64, Vec<File>>,
 }
 
 impl DirInfo {
@@ -182,10 +184,38 @@ impl DirInfo {
         dirs.par_sort_by(|a, b| b.size.cmp(&a.size));
         dirs
     }
+
+    /// Return all duplicates
+    pub fn duplicates_from_files(&self) -> HashMap<u64, Vec<File>> {
+        let mut dupemap: HashMap<u64, Vec<File>> = HashMap::new();
+        for file in &self.files {
+            dupemap
+                .entry(file.size)
+                .and_modify(|e| e.push(file.clone()))
+                .or_insert(vec![file.clone()]);
+        }
+        // leave only duplicates in
+        dupemap = Self::build_duplicates(&dupemap);
+        // TODO: Calculate a proper hash and check if these are actually identical
+        dupemap
+    }
+
+    /// Return all duplicates
+    fn build_duplicates(map: &HashMap<u64, Vec<File>>) -> HashMap<u64, Vec<File>> {
+        map.par_iter()
+            .filter(|e| e.1.len() > 1)
+            .map(|(h, f)| (h.clone(), f.clone()))
+            .collect()
+    }
+
+    /// Return all duplicates
+    fn build_duplicates_mut(&mut self) {
+        self.duplicates = Self::build_duplicates(&self.duplicates);
+    }
 }
 
 /// Scan a directory, calling callback with DirInfo periodically
-pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
+pub fn scan_callback<'a, P: AsRef<Path>, F: Fn(&DirInfo)>(
     source: P,
     callback: F,
     update_rate_ms: u128,
@@ -291,16 +321,17 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
+    dirinfo.duplicates = dirinfo.duplicates_from_files();
 
     dirinfo
 }
 
 /// Scan a root path and produce a DirInfo
-pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
+pub fn scan<'a, P: AsRef<Path>>(source: P) -> DirInfo {
     scan_callback(source, |_| {}, std::u128::MAX)
 }
 
-pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
+pub fn scan_archive<'a, P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
 
     let zipfile = fs::File::open(&source.as_ref()).unwrap();
@@ -312,7 +343,7 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
 
         if zip_entry.is_dir() {
         } else {
-            // it's a dir
+            // it's a file
             let ext_string = Path::new(zip_entry.name())
                 .extension()
                 .map(|x| x.to_string_lossy().to_string().to_lowercase());
@@ -326,6 +357,12 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
                 path: Path::new(zip_entry.name()).to_path_buf(),
                 modified: SystemTime::now(),
             };
+
+            dirinfo
+                .duplicates
+                .entry(zip_entry.compressed_size() as u64)
+                .and_modify(|e| e.push(file.clone()))
+                .or_insert(vec![file.clone()]);
 
             if let Some(containing_dir) = Path::new(zip_entry.name()).parent() {
                 let tree_dir =
@@ -376,6 +413,7 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
+    dirinfo.build_duplicates_mut();
 
     dirinfo
 }

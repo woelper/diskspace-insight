@@ -49,6 +49,14 @@ fn tree() {
 
     Command::new("dd")
         .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/file_10m.10a")
+        .arg("bs=10MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
         .arg("of=treetest/a/b/c/file_15m.15")
         .arg("bs=15MB")
         .arg("count=1")
@@ -84,6 +92,9 @@ fn tree() {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
 
+    info!("=== Duplicates");
+    info!("{:#?}", i.duplicates);
+
     Command::new("rm")
         .arg("-rf")
         .arg("treetest")
@@ -105,6 +116,14 @@ fn walk() {
     Command::new("dd")
         .arg("if=/dev/urandom")
         .arg("of=test/a/file_20m.20")
+        .arg("bs=20MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
+        .arg("of=test/a/file_20m.20b")
         .arg("bs=20MB")
         .arg("count=1")
         .output()
@@ -177,6 +196,14 @@ fn zip() {
 
     Command::new("dd")
         .arg("if=/dev/urandom")
+        .arg("of=treetest/a/b/file_10m.10b")
+        .arg("bs=10MB")
+        .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("dd")
+        .arg("if=/dev/urandom")
         .arg("of=treetest/a/b/c/file_15m.15")
         .arg("bs=15MB")
         .arg("count=1")
@@ -215,6 +242,9 @@ fn zip() {
     for (p, d) in &i.tree {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
+
+    info!("=== Duplicates");
+    info!("{:#?}", i.duplicates);
 
     Command::new("rm")
         .arg("-rf")
