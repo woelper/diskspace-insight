@@ -12,7 +12,6 @@ use std::time::SystemTime;
 // use std::thread;
 // use log::*;
 use std::fs;
-use zip;
 
 #[derive(Debug, Clone)]
 /// A File, representing a file on disk
@@ -204,7 +203,7 @@ impl DirInfo {
     fn build_duplicates(map: &HashMap<u64, Vec<File>>) -> HashMap<u64, Vec<File>> {
         map.par_iter()
             .filter(|e| e.1.len() > 1)
-            .map(|(h, f)| (h.clone(), f.clone()))
+            .map(|(h, f)| (*h, f.clone()))
             .collect()
     }
 
@@ -215,7 +214,7 @@ impl DirInfo {
 }
 
 /// Scan a directory, calling callback with DirInfo periodically
-pub fn scan_callback<'a, P: AsRef<Path>, F: Fn(&DirInfo)>(
+pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
     source: P,
     callback: F,
     update_rate_ms: u128,
@@ -307,7 +306,7 @@ pub fn scan_callback<'a, P: AsRef<Path>, F: Fn(&DirInfo)>(
                         ftype.files.push(file.clone());
                         ftype.size += file.size;
                     }
-                    dirinfo.files.push(file.clone());
+                    dirinfo.files.push(file);
                 }
             }
 
@@ -327,11 +326,11 @@ pub fn scan_callback<'a, P: AsRef<Path>, F: Fn(&DirInfo)>(
 }
 
 /// Scan a root path and produce a DirInfo
-pub fn scan<'a, P: AsRef<Path>>(source: P) -> DirInfo {
+pub fn scan<P: AsRef<Path>>(source: P) -> DirInfo {
     scan_callback(source, |_| {}, std::u128::MAX)
 }
 
-pub fn scan_archive<'a, P: AsRef<Path>>(source: P) -> DirInfo {
+pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut dirinfo = DirInfo::new();
 
     let zipfile = fs::File::open(&source.as_ref()).unwrap();
