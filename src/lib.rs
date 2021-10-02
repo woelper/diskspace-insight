@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 // use std::thread;
-use log::*;
+// use log::*;
 use std::fs;
 use zip;
 
