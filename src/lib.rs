@@ -2,16 +2,16 @@
 mod tests;
 
 use bytesize::ByteSize;
-// use jwalk::WalkDir as JWalkDir;
+use log::{info, error, debug};
 use walkdir::WalkDir;
-// use log::*;
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::io::{Read, BufReader};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-// use std::thread;
-// use log::*;
 use std::fs;
+use anyhow::Result;
 
 #[derive(Debug, Clone)]
 /// A File, representing a file on disk
@@ -20,6 +20,7 @@ pub struct File {
     pub ext: Option<String>,
     pub path: PathBuf,
     pub modified: SystemTime,
+    pub hash: u64
 }
 
 impl std::fmt::Display for File {
@@ -189,7 +190,7 @@ impl DirInfo {
         let mut dupemap: HashMap<u64, Vec<File>> = HashMap::new();
         for file in &self.files {
             dupemap
-                .entry(file.size)
+                .entry(file.hash)
                 .and_modify(|e| e.push(file.clone()))
                 .or_insert(vec![file.clone()]);
         }
@@ -257,11 +258,14 @@ pub fn scan_callback<P: AsRef<Path>, F: Fn(&DirInfo)>(
                 if let Ok(meta) = x.metadata() {
                     let size = meta.len();
                     dirinfo.combined_size += size;
+                    let hash = hash_file(&x.path()).unwrap_or_default();
+                    debug!("{:?} is {}", x.path(), hash);
                     let file = File {
                         size,
                         ext: ext_string.clone(),
                         path: x.path().to_path_buf(),
                         modified: meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                        hash
                     };
                     // Since we are at a file level, the parent is the enclosing folder
                     if let Some(containing_dir) = x.path().parent() {
@@ -338,7 +342,7 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
     let mut archive = zip::ZipArchive::new(zipfile).unwrap();
 
     for i in 0..archive.len() {
-        let zip_entry = archive.by_index(i).unwrap();
+        let mut zip_entry = archive.by_index(i).unwrap();
 
         if zip_entry.is_dir() {
         } else {
@@ -348,13 +352,21 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
                 .map(|x| x.to_string_lossy().to_string().to_lowercase());
 
             let size = zip_entry.compressed_size();
-
+            let mut buf: Vec<u8> = vec![];
+      
+            if let Err(e)  = zip_entry.read_to_end(&mut buf) {
+                error!("{e}");
+            }
+            
+            let hash = hash_bytes(&buf);
+            info!("{} {}", zip_entry.name(), hash);
             dirinfo.combined_size += size;
             let file = File {
                 size,
                 ext: ext_string.clone(),
                 path: Path::new(zip_entry.name()).to_path_buf(),
                 modified: SystemTime::now(),
+                hash
             };
 
             dirinfo
@@ -412,10 +424,30 @@ pub fn scan_archive<P: AsRef<Path>>(source: P) -> DirInfo {
     dirinfo.files_by_size = dirinfo.files_by_size();
     dirinfo.types_by_size = dirinfo.types_by_size();
     dirinfo.dirs_by_size = dirinfo.dirs_by_size();
-    dirinfo.build_duplicates_mut();
+    dirinfo.duplicates = dirinfo.duplicates_from_files();
+
+    // dirinfo.build_duplicates_mut();
 
     dirinfo
 }
+
+
+fn hash_file(file: &Path) -> Result<u64> {
+    let f = std::fs::File::open(file)?;
+    let mut r = BufReader::new(f);
+    let mut buf: Vec<u8> = vec![];
+    r.read_to_end(&mut buf)?;
+    // r.(&mut buf)?;
+    // Ok(hash_bytes(&buf))
+    Ok(hash_bytes(&buf))
+}
+
+fn hash_bytes(b: &[u8]) -> u64 {
+    let mut s :twox_hash::Xxh3Hash64 = Default::default();
+    b.hash(&mut s);
+    s.finish()
+}
+
 
 // pub fn scan_callback<P: AsRef<Path>>(source: P, callback: &dyn Fn(&DirInfo)) -> DirInfo {
 //     let mut dirinfo = DirInfo::new();

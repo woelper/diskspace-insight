@@ -161,6 +161,7 @@ fn walk() {
 fn zip() {
     std::env::set_var("RUST_LOG", "debug");
     let _ = env_logger::try_init();
+    info!("Running archive test");
 
     Command::new("mkdir")
         .arg("-p")
@@ -183,6 +184,12 @@ fn zip() {
         .arg("of=treetest/a/file_5m.5")
         .arg("bs=5MB")
         .arg("count=1")
+        .output()
+        .unwrap();
+
+    Command::new("cp")
+        .arg("treetest/a/file_5m.5")
+        .arg("treetest/a/file_5m_dupe.5")
         .output()
         .unwrap();
 
@@ -218,6 +225,17 @@ fn zip() {
         .output()
         .unwrap();
 
+    let ls = Command::new("ls")
+        .arg("-lRa")
+        .arg("treetest")
+        .output()
+        .unwrap()
+        .stdout;
+
+    for line in std::str::from_utf8(&ls).unwrap().split("\n") {
+        info!("{:?}", line);
+    }
+
     Command::new("zip")
         .arg("-r")
         .arg("archive.zip")
@@ -226,24 +244,24 @@ fn zip() {
         .unwrap();
 
     let i = scan_archive("archive.zip");
-    info!("=== Files By Size");
+    info!("=== ZIP Files By Size");
 
     for d in &i.files_by_size {
         info!("{:?}", &d.path);
     }
 
-    info!("=== Dirs By Size");
+    info!("=== ZIP Dirs By Size");
 
     for d in &i.dirs_by_size {
         info!("{:?}: {}", d.path, ByteSize(d.size));
     }
 
-    info!("=== Dirs By Combined Size");
+    info!("=== ZIP Dirs By Combined Size");
     for (p, d) in &i.tree {
         info!("{} {}", p.display(), ByteSize(d.combined_size));
     }
 
-    info!("=== Duplicates");
+    info!("=== ZIP Duplicates");
     info!("{:#?}", i.duplicates);
 
     Command::new("rm")
