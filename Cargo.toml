@@ -1,6 +1,6 @@
 [package]
 name = "diskspace_insight"
-version = "0.1.92"
+version = "0.1.93"
 authors = ["Johann Woelper <woelper@gmail.com>"]
 edition = "2018"
 license = "MIT"
